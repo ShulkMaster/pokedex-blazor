@@ -1,57 +1,58 @@
 ﻿@page "/fetchdata"
-@inject HttpClient Http
+@using Pokedex.Api
+@using Pokedex.Api.Responses
+@inject PokeApi _api
 
-<PageTitle>Weather forecast</PageTitle>
+<PageTitle>Pokemon</PageTitle>
 
-<h1>Weather forecast</h1>
+<h1>Pokemones</h1>
 
-<p>This component demonstrates fetching data from the server.</p>
-
-@if (forecasts == null)
+@if (_hasError)
 {
-    <p><em>Loading...</em></p>
+  <p>
+    <em>error</em>
+  </p>
 }
 else
 {
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Date</th>
-                <th>Temp. (C)</th>
-                <th>Temp. (F)</th>
-                <th>Summary</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var forecast in forecasts)
-            {
-                <tr>
-                    <td>@forecast.Date.ToShortDateString()</td>
-                    <td>@forecast.TemperatureC</td>
-                    <td>@forecast.TemperatureF</td>
-                    <td>@forecast.Summary</td>
-                </tr>
-            }
-        </tbody>
-    </table>
+  <p>@_pokemons.Count</p>
+  <ul class="list-group">
+    @foreach (var (name, url) in _pokemons)
+    {
+      <li class="list-group-item">
+        <div class="card">
+          <div class="card-header">
+            Pokemon
+          </div>
+          <div class="card-body">
+            <h5 class="card-title">@name</h5>
+            <p class="card-text">@url</p>
+          </div>
+        </div>
+      </li>
+    }
+  </ul>
 }
 
 @code {
-    private WeatherForecast[]? forecasts;
 
-    protected override async Task OnInitializedAsync()
+  private readonly List<PokemonResource> _pokemons = new(500);
+  bool _hasError;
+
+  protected override async Task OnInitializedAsync()
+  {
+    var pokemons = await _api.Get<Pagination<PokemonResource>>(Endpoint.Pokemon.Index);
+
+    switch (pokemons)
     {
-        forecasts = await Http.GetFromJsonAsync<WeatherForecast[]>("sample-data/weather.json");
+      case Result<Pagination<PokemonResource>>.Success success:
+        Console.WriteLine(success.Value.Count);
+        _pokemons.AddRange(success.Value.Results);
+        break;
+      case Result<Pagination<PokemonResource>>.Failure:
+        _hasError = true;
+        break;
     }
+  }
 
-    public class WeatherForecast
-    {
-        public DateTime Date { get; set; }
-
-        public int TemperatureC { get; set; }
-
-        public string? Summary { get; set; }
-
-        public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-    }
 }
